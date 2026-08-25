@@ -1,31 +1,84 @@
-from firebase import db
+from ..database import get_connection
 
 
-def details():
+def get_inventory():
     """
-    Get the current inventory details from Firestore.
-
-    Returns:
-        A list of current inventory items.
+    Get all current inventory with product and supplier information.    
     """
 
-    docs = db.collection("inventory").stream()
+    conn = get_connection()
+    cursor = conn.cursor()
 
-    inventory = []
+    cursor.execute("""
+        SELECT
+            p.id AS product_id,
+            p.sku,
+            p.name,
+            p.category,
+            p.cost_price,
 
-    for doc in docs:
-        data = doc.to_dict()
+            i.current_stock,
+            i.reorder_threshold,
+            i.reorder_qty,
 
-        inventory.append({
-            "sku": data.get("sku"),
-            "name": data.get("name"),
-            "current_stock": data.get("current_stock"),
-            "reorder_threshold": data.get("reorder_threshold"),
-            "reorder_qty": data.get("reorder_qty"),
-            "unit_cost": data.get("unit_cost"),
-            "supplier_name": data.get("supplier_name"),
-            "supplier_email": data.get("supplier_email"),
-            "status": data.get("status"),
-        })
+            s.id AS supplier_id,
+            s.name AS supplier_name,
+            s.email AS supplier_email,
+            s.lead_time_days
 
-    return inventory
+        FROM inventory i
+
+        JOIN products p
+            ON i.product_id = p.id
+
+        JOIN suppliers s
+            ON p.supplier_id = s.id
+    """)
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return [dict(row) for row in rows]
+
+
+def get_low_stock():
+    """
+    Find all products where stock is below the reorder threshold.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            p.id AS product_id,
+            p.sku,
+            p.name,
+            p.cost_price,
+
+            i.current_stock,
+            i.reorder_threshold,
+            i.reorder_qty,
+
+            s.id AS supplier_id,
+            s.name AS supplier_name,
+            s.email AS supplier_email,
+            s.lead_time_days
+
+        FROM inventory i
+
+        JOIN products p
+            ON i.product_id = p.id
+
+        JOIN suppliers s
+            ON p.supplier_id = s.id
+
+        WHERE i.current_stock < i.reorder_threshold
+    """)
+
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return [dict(row) for row in rows]

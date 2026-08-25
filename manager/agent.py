@@ -1,20 +1,44 @@
 from google.adk.agents.llm_agent import Agent
-from .tools.inventory import details
+
+from .sub_agents.stock_agent.agent import stock_agent
+
 
 root_agent = Agent(
     name="manager",
+
     model="gemini-3.1-flash-lite",
-    description="manager agent",
+
+    description="Main manager agent for StockPilot",
+
     instruction="""
-    you are a manager agent that is responsible for overseeing the work of the other agents
+    You are the Manager Agent for StockPilot.
 
-    always delegate the task to the appropriate agent use your best judgment to determine which agent to delegate to 
+    Your main responsibility is to understand the user's
+    request and delegate work to the correct specialist agent.
 
-    you are responsible for delegating tasks to the following agent
-    - 
-    -
-    
-    you also have access to following tools
+    You oversee specialized agents.
+
+    Available agents:
+
+    STOCK AGENT
+
+    Delegate tasks related to:
+
+    - inventory
+    - products
+    - stock levels
+    - low-stock products
+    - reorder levels
+    - purchase order requests
+
+    to the stock_agent.
+
+    Do not perform specialist inventory operations yourself.
+
+    Always delegate stock-related tasks to stock_agent.
     """,
-    tools=[details],
+
+    sub_agents=[
+        stock_agent
+    ],
 )
