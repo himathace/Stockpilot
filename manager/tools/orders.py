@@ -122,27 +122,20 @@ def create_reorder_request(product_id: int):
     }
 
 
-
-def approve_order(order_id: int):
-    """
-    Approve a pending order.
-    This should be called only after explicit human confirmation.
-    """
+def approve_order(order_id: int) -> dict:
+    """Approve a pending purchase order."""
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT *
-        FROM purchase_orders
-        WHERE id = ?
-    """, (order_id,))
-
+    cursor.execute(
+        "SELECT status FROM purchase_orders WHERE id = ?",
+        (order_id,)
+    )
     order = cursor.fetchone()
 
     if order is None:
         conn.close()
-
         return {
             "success": False,
             "message": "Order not found"
@@ -150,7 +143,6 @@ def approve_order(order_id: int):
 
     if order["status"] != "pending_approval":
         conn.close()
-
         return {
             "success": False,
             "message": f"Order cannot be approved. Current status: {order['status']}"
@@ -158,11 +150,9 @@ def approve_order(order_id: int):
 
     cursor.execute("""
         UPDATE purchase_orders
-
         SET
             status = 'approved',
             approved_at = CURRENT_TIMESTAMP
-
         WHERE id = ?
     """, (order_id,))
 
@@ -177,81 +167,3 @@ def approve_order(order_id: int):
 
 
 
-def place_order(order_id: int):
-    """
-    Place an approved purchase order.
-    """
-
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT
-            po.*,
-
-            p.name AS product_name,
-
-            s.name AS supplier_name,
-            s.email AS supplier_email
-
-        FROM purchase_orders po
-
-        JOIN products p
-            ON po.product_id = p.id
-
-        JOIN suppliers s
-            ON po.supplier_id = s.id
-
-        WHERE po.id = ?
-    """, (order_id,))
-
-    order = cursor.fetchone()
-
-    if order is None:
-        conn.close()
-
-        return {
-            "success": False,
-            "message": "Order not found"
-        }
-
-    # VERY IMPORTANT
-    if order["status"] != "approved":
-        conn.close()
-
-        return {
-            "success": False,
-            "message": "Human approval is required before placing the order"
-        }
-
-    # ------------------------------------------------
-    # Later your real supplier integration goes here.
-    #
-    # Example:
-    # send supplier email
-    # call supplier API
-    # generate PO PDF
-    # ------------------------------------------------
-
-    cursor.execute("""
-        UPDATE purchase_orders
-
-        SET
-            status = 'ordered',
-            ordered_at = CURRENT_TIMESTAMP
-
-        WHERE id = ?
-    """, (order_id,))
-
-    conn.commit()
-    conn.close()
-
-    return {
-        "success": True,
-        "order_id": order_id,
-        "product": order["product_name"],
-        "supplier": order["supplier_name"],
-        "supplier_email": order["supplier_email"],
-        "quantity": order["quantity"],
-        "status": "ordered"
-    }

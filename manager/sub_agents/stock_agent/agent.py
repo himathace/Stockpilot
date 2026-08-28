@@ -1,4 +1,5 @@
 from google.adk.agents.llm_agent import Agent
+from google.adk.tools import FunctionTool
 
 from ...tools.inventory import (
     get_inventory,
@@ -7,6 +8,8 @@ from ...tools.inventory import (
 
 from ...tools.orders import (
     create_reorder_request,
+    approve_order
+
 )
 
 
@@ -51,9 +54,6 @@ stock_agent = Agent(
     You must NEVER claim that a purchase order has been placed
     before human approval.
 
-    You cannot approve your own purchase orders.
-
-    You cannot bypass human approval.
 
     Actual order placement is handled separately after a human
     explicitly approves the order.
@@ -63,5 +63,7 @@ stock_agent = Agent(
         get_inventory,
         get_low_stock,
         create_reorder_request,
+        FunctionTool(approve_order, require_confirmation=True)
+
     ],
 )
